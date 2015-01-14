@@ -4,9 +4,10 @@
 import fnmatch
 import itertools
 import logging
+import urllib
 import os
 
-from gi.repository import Gtk
+from gi.repository import Gdk, Gtk
 from gi.repository.GdkPixbuf import Pixbuf
 
 import models
@@ -20,6 +21,7 @@ logger = logging.getLogger()
 RESOURCES = os.path.join(os.path.dirname(__file__), 'res')
 NAME = u'MusicX'
 VERSION = '0.1'
+SONG_INFO = 0
 
 
 class Playlist(Gtk.TreeView):
@@ -50,6 +52,18 @@ class Playlist(Gtk.TreeView):
             # column.set_fixed_width(80)
             self.append_column(column)
 
+        self.enable_model_drag_dest([], Gdk.DragAction.COPY)
+        self.drag_dest_add_uri_targets()
+        self.connect('drag-data-received', self._on_drag_data_received)
+
+    def _on_drag_data_received(self, widget, drag_context, x, y, data,
+                               info, time):
+        if info == SONG_INFO:
+            model = widget.get_model()
+            for uri in data.get_uris():
+                s = models.Song(path=urllib.url2pathname(uri))
+                model.append((s,))
+
     def _cell_data_func(self, column, cell, model, iter, data):
         item = model.get_value(iter, 0)
         value = getattr(item, column.get_name(), '')
@@ -73,6 +87,48 @@ class SongsTree(Gtk.TreeView):
         column.pack_start(cell, True)
         column.set_cell_data_func(cell, self._cell_data_func)
         self.append_column(column)
+
+        self.enable_model_drag_source(Gdk.ModifierType.BUTTON1_MASK,
+                                      [], Gdk.DragAction.COPY)
+        self.drag_source_add_uri_targets()
+        self.connect('drag-data-get', self._on_drag_data_get)
+
+    def _on_drag_data_get(self, widget, drag_context, data, info, time):
+        if info == SONG_INFO:
+            selection = self.get_selection()
+            tree_store, tree_paths = selection.get_selected_rows()
+            songs = (self._retrieve_songs(tp.copy()) for tp in tree_paths)
+            songs = list(itertools.chain(*songs))
+            data.set_uris(songs)
+
+    def get_model_value(self, tree_path):
+        song = None
+        try:
+            tree_iter = self.get_model().get_iter(tree_path)
+            song = self.get_model().get_value(tree_iter, 0)
+        except ValueError:
+            pass
+
+        return song
+
+    def _retrieve_songs(self, tree_path):
+        level = tree_path.get_depth()
+        items = []
+
+        if level == 3:
+            song = self.get_model_value(tree_path)
+            if song:
+                items.append(urllib.pathname2url(song.path))
+                tree_path.up()
+        elif level < 3:
+            tree_path.down()
+            to_extend = self._retrieve_songs(tree_path.copy())
+            while to_extend:
+                items.extend(to_extend)
+                tree_path.next()
+                to_extend = self._retrieve_songs(tree_path.copy())
+
+        return items
 
     def _cell_data_func(self, column, cell, model, iter, data):
         item = model.get_value(iter, 0)
