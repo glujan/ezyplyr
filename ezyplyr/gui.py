@@ -134,6 +134,7 @@ class MusicWindow(Gtk.Window):
         pass  # TODO
 
     def quit(self, source, event):
+        self.settings.save()
         Gtk.main_quit(source, event)
 
     def _show_about(self, widget):
