@@ -14,6 +14,12 @@ class MusicBase(GObject.GObject):
         super(MusicBase, self).__init__()
         self.set_properties(**kwargs)
 
+    def __gt__(self, other):
+        return locale.strcoll(unicode(self), unicode(other)) > 0
+
+    def __lt__(self, other):
+        return locale.strcoll(unicode(self), unicode(other)) < 0
+
 
 class Song(MusicBase):
     path = GObject.property(type=str)
@@ -49,6 +55,21 @@ class Song(MusicBase):
 
         super(Song, self).__init__(*args, **kwargs)
 
+    def __unicode__(self):
+        if self.track_no:
+            return u'{}. {}'.format(self.track_no, self.title.decode('utf8'))
+        else:
+            return self.title.decode('utf8')
+
+    def __eq__(self, other):
+        return self.path == other.path
+
+    def __gt__(self, other):
+        return self.track_no > other.track_no
+
+    def __lt__(self, other):
+        return self.track_no < other.track_no
+
 
 class Album(MusicBase):
     title = GObject.property(type=str)
@@ -60,6 +81,18 @@ class Album(MusicBase):
                            'year': song.year})
         super(Album, self).__init__(*args, **kwargs)
 
+    def __hash__(self):
+        return hash(self.title)
+
+    def __eq__(self, other):
+        return (self.title, self.year) == (other.title, other.year)
+
+    def __unicode__(self):
+        if self.year:
+            return u'{} - {}'.format(self.year, self.title.decode('utf8'))
+        else:
+            return self.title.decode('utf8')
+
 
 class Artist(MusicBase):
     name = GObject.property(type=str)
@@ -70,3 +103,11 @@ class Artist(MusicBase):
             name = song.album_artist or song.artist
             self.set_property('name', name or _('Unknown artist'))
 
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __unicode__(self):
+        return self.name.decode('utf8')

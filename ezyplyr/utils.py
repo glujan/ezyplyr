@@ -3,7 +3,7 @@
 import gettext
 import threading
 
-from gi.repository import Gtk, GObject, Gio, Notify
+from gi.repository import Gtk, GObject, Gio
 
 
 t = gettext.translation('musicx', 'locale', fallback=True)
@@ -26,6 +26,27 @@ def sort_func(model, row1, row2, user_data):
     else:
         sort = -1
     return sort
+
+
+def async_call(func, callback=None, errback=None, *args, **kwargs):
+    def no_action(*args, **kwargs):
+        pass
+
+    if not callback:
+        callback = no_action
+    if not errback:
+        errback = no_action
+
+    def do_call():
+        try:
+            result = func(*args, **kwargs)
+        except Exception, err:
+            GObject.idle_add(lambda: errback(err))
+        else:
+            GObject.idle_add(lambda: callback(result))
+
+    thread = threading.Thread(target=do_call)
+    thread.start()
 
 
 class LazyDict(dict):

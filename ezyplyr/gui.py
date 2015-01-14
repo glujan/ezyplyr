@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+import fnmatch
+import itertools
 import logging
 import os
 
@@ -131,7 +133,37 @@ class MusicWindow(Gtk.Window):
         self.plst.clear()
 
     def rescan_collection(self, source=None):
-        pass  # TODO
+        def do_update():
+            songs = []
+            for root, dirnames, filenames in os.walk(self.settings.collection):
+                for filename in fnmatch.filter(filenames, '*.mp3'):
+                    path = os.path.join(root, filename).decode('utf8')
+                    songs.append(models.Song(path))
+            return songs
+
+        def callback(result=None):
+            def add_iter(obj, path=None):
+                parent = self.tree_library.get_iter(path) if path else None
+                it = self.tree_library.append(parent, (obj,))
+                return self.tree_library.get_string_from_iter(it)
+
+            self.tree_library.clear()
+            artists = utils.LazyDict()
+            albums = utils.LazyDict()
+
+            for song in result:
+                artist = models.Artist(song)
+                album = models.Album(song)
+
+                path = artists.setdefault(artist, lambda: add_iter(artist))
+                path = albums.setdefault(album, lambda: add_iter(album, path))
+
+                add_iter(song, path)
+
+        def errback(error):
+            logger.exception(error)
+
+        utils.async_call(do_update, callback, errback)
 
     def quit(self, source, event):
         self.settings.save()
