@@ -3,6 +3,11 @@
 EzyPlyr ("easy player") is a simple music player written in Gtk+ 3
 using Python. Playback with GStreamer.
 
+## Requirements
+For know just `python-gi` version 3.14 and `taglib` (and also it's bindings for Python). Former is is available in Debian (Jessie), Ubuntu 14.10 and probably most modern distros, latter is called `libtag1-dev`.
+
+Install also dependencies from [requirements.txt](./requirements.txt).
+
 ## Caution
 
 It's unusable. It can't play any music. Someday it should, but not yet.
