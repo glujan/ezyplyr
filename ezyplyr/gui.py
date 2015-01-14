@@ -160,8 +160,12 @@ class MusicWindow(Gtk.Window):
 
                 add_iter(song, path)
 
+            if source:
+                utils.notify(_('Collection scanned!'))
+
         def errback(error):
             logger.exception(error)
+            utils.notify(_('Error scanning collection'), 'dialog-error')
 
         utils.async_call(do_update, callback, errback)
 

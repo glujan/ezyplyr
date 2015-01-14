@@ -3,7 +3,7 @@
 
 
 from gi import require_version
-from gi.repository import Gtk
+from gi.repository import Gtk, Notify
 
 from gui import MusicWindow, NAME
 
@@ -17,5 +17,6 @@ if __name__ == '__main__':
     locale.setlocale(locale.LC_ALL, '')
     logging.basicConfig()
 
+    Notify.init(NAME)
     app = MusicWindow()
     Gtk.main()

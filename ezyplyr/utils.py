@@ -3,7 +3,7 @@
 import gettext
 import threading
 
-from gi.repository import Gtk, GObject, Gio
+from gi.repository import Gtk, GObject, Gio, Notify
 
 
 t = gettext.translation('musicx', 'locale', fallback=True)
@@ -47,6 +47,14 @@ def async_call(func, callback=None, errback=None, *args, **kwargs):
 
     thread = threading.Thread(target=do_call)
     thread.start()
+
+
+def notify(message, message_type=None):
+    if not message_type:
+        message_type = 'dialog-information'
+    app = Notify.get_app_name()
+    popup = Notify.Notification.new(app, message, message_type)
+    popup.show()
 
 
 class LazyDict(dict):
