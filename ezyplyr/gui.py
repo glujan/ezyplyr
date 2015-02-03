@@ -279,7 +279,7 @@ class SignalHandler(object):
         repeat.connect('activate', self.on_repeat_activated)
 
     def on_delete(self, source, event):
-        self.window.settings.save()
+        self.settings.save()
         Gtk.main_quit(source, event)
 
     def on_stream_ended(self, source, data=None):
@@ -309,7 +309,7 @@ class SignalHandler(object):
 
         tree_iter = plst.get_iter_from_string(str(self.curr))
         song = plst.get_value(tree_iter, 0)
-        self.player.previous(song.path)  #TODO first seconds move to begining
+        self.player.previous(song.path)    # TODO first seconds move to begining
 
     def on_play_clicked(self, source):
         plst = utils.find_child(self.window, 'playlist').get_model()
@@ -389,64 +389,32 @@ class SignalHandler(object):
         about.destroy()
 
 
-class MusicWindow(Gtk.Window):
-    def __init__(self):
-        Gtk.Window.__init__(self, title=NAME)
-
-        self.plst = Gtk.ListStore(models.Song)
-        self.tree_library = Gtk.TreeStore(models.MusicBase)
-
-        self.scale = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False)
-        self.title = Gtk.Label('Welcome to {}!'.format(NAME))
-        self.curr_time = Gtk.Label('00:00')
-        self.play_pause = Gtk.Button()
-
-        self.settings = Settings()
-        self._init_gui()
-
-        handler = SignalHandler(self)
-        handler.init_signals()
-
-        self.show_all()
-
-    def _init_gui(self):
-        self.set_border_width(3)
-        self.set_default_size(800, 400)
-        self.set_icon(Pixbuf.new_from_file(os.path.join(RESOURCES, 'icon.ico')))
+class EzyHeaderBar(Gtk.HeaderBar):
+    def __init__(self, *args, **kwargs):
+        Gtk.HeaderBar.__init__(self, *args, **kwargs)
 
         play_box = self._create_play_box()
         settings_box = self._create_settings_box()
         custom_title = self._create_custom_title()
 
-        title_bar = Gtk.HeaderBar()
-        title_bar.props.show_close_button = True
-        title_bar.pack_start(play_box)
-        title_bar.pack_end(settings_box)
-        title_bar.set_custom_title(custom_title)
-        self.set_titlebar(title_bar)
-
-        list_view = Playlist(model=self.plst, name='playlist')
-        tree_view = SongsTree(model=self.tree_library, name='tree')
-
-        scrolled_tree = Gtk.ScrolledWindow()
-        scrolled_tree.add(tree_view)
-        scrolled_list = Gtk.ScrolledWindow()
-        scrolled_list.add(list_view)
-
-        paned = Gtk.Paned.new(Gtk.Orientation.HORIZONTAL)
-        paned.set_position(200)
-        paned.add1(scrolled_tree)
-        paned.add2(scrolled_list)
-        self.add(paned)
+        self.props.show_close_button = True
+        self.pack_start(play_box)
+        self.pack_end(settings_box)
+        self.set_custom_title(custom_title)
 
     def _create_custom_title(self):  # TODO: Update on song (title,current_time)
+        scale = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False,
+                           name='seeker')
+        title = Gtk.Label('Welcome to {}!'.format(NAME), name='title-label')
+        curr_time = Gtk.Label('00:00', name='time-label')
+
         scale_wrap = Gtk.VBox(spacing=3)
         scale_wrap.set_size_request(400, 20)
-        scale_wrap.pack_start(self.title, True, True, 5)
+        scale_wrap.pack_start(title, True, True, 5)
 
         scale_box = Gtk.HBox(spacing=3)
-        scale_box.pack_start(self.curr_time, False, False, 8)
-        scale_box.pack_start(self.scale, True, True, 0)
+        scale_box.pack_start(curr_time, False, False, 8)
+        scale_box.pack_start(scale, True, True, 0)
         scale_wrap.pack_start(scale_box, True, True, 0)
 
         return scale_wrap
@@ -459,9 +427,9 @@ class MusicWindow(Gtk.Window):
         utils.set_icon(backward, 'media-skip-backward')
         play_box.add(backward)
 
-        self.play_pause.set_name('play-button')
-        utils.set_icon(self.play_pause, 'media-playback-start')
-        play_box.add(self.play_pause)
+        play_pause = Gtk.Button(name='play-button')
+        utils.set_icon(play_pause, 'media-playback-start')
+        play_box.add(play_pause)
 
         forward = Gtk.Button(name='forward-button')
         utils.set_icon(forward, 'media-skip-forward')
@@ -491,3 +459,39 @@ class MusicWindow(Gtk.Window):
             menu.append(item)
 
         return button
+
+
+class MusicWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title=NAME)
+
+        self._init_gui()
+
+        handler = SignalHandler(self)
+        handler.init_signals()
+
+        self.show_all()
+
+    def _init_gui(self):
+        self.set_border_width(3)
+        self.set_default_size(800, 400)
+        self.set_icon(Pixbuf.new_from_file(os.path.join(RESOURCES, 'icon.ico')))
+
+        title_bar = EzyHeaderBar()
+        self.set_titlebar(title_bar)
+
+        plst = Gtk.ListStore(models.Song)
+        tree_library = Gtk.TreeStore(models.MusicBase)
+        list_view = Playlist(model=plst, name='playlist')
+        tree_view = SongsTree(model=tree_library, name='tree')
+
+        scrolled_tree = Gtk.ScrolledWindow()
+        scrolled_tree.add(tree_view)
+        scrolled_list = Gtk.ScrolledWindow()
+        scrolled_list.add(list_view)
+
+        paned = Gtk.Paned.new(Gtk.Orientation.HORIZONTAL)
+        paned.set_position(200)
+        paned.add1(scrolled_tree)
+        paned.add2(scrolled_list)
+        self.add(paned)
