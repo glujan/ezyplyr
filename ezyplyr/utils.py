@@ -10,6 +10,24 @@ t = gettext.translation('ezyplyr', 'locale', fallback=True)
 ugettext = t.ugettext
 
 
+def find_child(parent, name):
+    if parent.get_name() == name:
+        return parent
+
+    if isinstance(parent, Gtk.MenuButton):
+        for child in parent.get_popup().get_children():
+            ret = find_child(child, name)
+            if ret:
+                return ret
+
+    if isinstance(parent, Gtk.Container):
+        for child in parent.get_children():
+            ret = find_child(child, name)
+            if ret:
+                return ret
+    return None
+
+
 def set_icon(button, icon_name, size=None):
     if not size:
         size = Gtk.IconSize.LARGE_TOOLBAR
