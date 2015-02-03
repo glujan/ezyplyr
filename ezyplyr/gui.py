@@ -282,7 +282,7 @@ class SignalHandler(object):
         self.window.settings.save()
         Gtk.main_quit(source, event)
 
-    def on_stream_ended(self, widget, data=None):
+    def on_stream_ended(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
         self.curr += 1
@@ -300,7 +300,7 @@ class SignalHandler(object):
         else:
             utils.set_icon(play, 'media-playback-start')
 
-    def on_backward_clicked(self, widget, data=None):
+    def on_backward_clicked(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
         self.curr -= 1
@@ -311,7 +311,7 @@ class SignalHandler(object):
         song = plst.get_value(tree_iter, 0)
         self.player.previous(song.path)  #TODO first seconds move to begining
 
-    def on_play_clicked(self, widget):
+    def on_play_clicked(self, source):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
         if len(plst) == 0:
