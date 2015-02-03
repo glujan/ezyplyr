@@ -209,12 +209,8 @@ class Player(GObject.GObject):
         self.path = None
 
     def previous(self, path):
-        nanosecs = self.player.query_position(Gst.Format.TIME)[1]
         self.stop()
-        if nanosecs > 5000000000:
-            self.play(path)
-        else:
-            self.play(self.path)
+        self.play(path)
 
     def next(self, path):
         self.stop()
@@ -313,7 +309,7 @@ class SignalHandler(object):
 
         tree_iter = plst.get_iter_from_string(str(self.curr))
         song = plst.get_value(tree_iter, 0)
-        self.player.previous(song.path)  # FIXME first seconds move to begining
+        self.player.previous(song.path)  #TODO first seconds move to begining
 
     def on_play_clicked(self, widget):
         plst = utils.find_child(self.window, 'playlist').get_model()
