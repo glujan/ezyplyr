@@ -20,7 +20,7 @@ from utils import ugettext as _
 logger = logging.getLogger()
 
 RESOURCES = os.path.join(os.path.dirname(__file__), 'res')
-NAME = u'MusicX'
+NAME = u'EzyPlyr'
 VERSION = '0.1'
 SONG_INFO = 0
 

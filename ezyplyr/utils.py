@@ -6,7 +6,7 @@ import threading
 from gi.repository import Gtk, GObject, Gio, Notify
 
 
-t = gettext.translation('musicx', 'locale', fallback=True)
+t = gettext.translation('ezyplyr', 'locale', fallback=True)
 ugettext = t.ugettext
 
 
