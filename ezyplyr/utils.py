@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import division, unicode_literals
+
 import gettext
 import threading
 
@@ -34,6 +36,12 @@ def set_icon(button, icon_name, size=None):
     icon = Gio.ThemedIcon(name=icon_name)
     image = Gtk.Image.new_from_gicon(icon, size)
     button.set_image(image)
+
+
+def get_time(seconds):
+    minutes = seconds // 60
+    seconds -= minutes * 60
+    return '{:02}:{:02}'.format(minutes, seconds)
 
 
 def sort_func(model, row1, row2, user_data):

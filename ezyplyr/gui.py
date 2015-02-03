@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+from __future__ import division
+
 import fnmatch
 import itertools
 import logging
@@ -234,7 +236,7 @@ class EzyGstPlayer(GObject.GObject):
         nanosecs = self.player.query_position(Gst.Format.TIME)[1]
         duration_nanosecs = self.player.query_duration(Gst.Format.TIME)[1]
         self.emit(self.UPDATED, {'position': nanosecs,
-                                 'duraion': duration_nanosecs,
+                                 'duration': duration_nanosecs,
                                  'playing': True})
         return True
 
@@ -294,9 +296,24 @@ class EzySignalHandler(object):
         self.player.next(song.path)
 
     def on_stream_updated(self, source, data):
+        plst = utils.find_child(self.window, 'playlist').get_model()
         play = utils.find_child(self.window, 'play-button')
+        time = utils.find_child(self.window, 'time-label')
+        title = utils.find_child(self.window, 'title-label')
+        seeker = utils.find_child(self.window, 'seeker')
+
         if data['playing']:
+            tree_iter = plst.get_iter_from_string(str(self.curr))
+            song = plst.get_value(tree_iter, 0)
+
             utils.set_icon(play, 'media-playback-pause')
+            duration_secs = data.get('duration', 0) // 1000000000
+            position_secs = data.get('position', 0) // 1000000000
+
+            title.set_text('{} - {}'.format(song.title, song.artist))
+            seeker.set_range(0, duration_secs)
+            seeker.set_value(position_secs)
+            time.set_text(utils.get_time(position_secs))
         else:
             utils.set_icon(play, 'media-playback-start')
 
@@ -402,22 +419,22 @@ class EzyHeaderBar(Gtk.HeaderBar):
         self.pack_end(settings_box)
         self.set_custom_title(custom_title)
 
-    def _create_custom_title(self):  # TODO: Update on song (title,current_time)
-        scale = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False,
+    def _create_custom_title(self):
+        seeker = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False,
                            name='seeker')
         title = Gtk.Label('Welcome to {}!'.format(NAME), name='title-label')
         curr_time = Gtk.Label('00:00', name='time-label')
 
-        scale_wrap = Gtk.VBox(spacing=3)
-        scale_wrap.set_size_request(400, 20)
-        scale_wrap.pack_start(title, True, True, 5)
+        seeker_wrap = Gtk.VBox(spacing=3)
+        seeker_wrap.set_size_request(400, 20)
+        seeker_wrap.pack_start(title, True, True, 5)
 
-        scale_box = Gtk.HBox(spacing=3)
-        scale_box.pack_start(curr_time, False, False, 8)
-        scale_box.pack_start(scale, True, True, 0)
-        scale_wrap.pack_start(scale_box, True, True, 0)
+        seeker_box = Gtk.HBox(spacing=3)
+        seeker_box.pack_start(curr_time, False, False, 8)
+        seeker_box.pack_start(seeker, True, True, 0)
+        seeker_wrap.pack_start(seeker_box, True, True, 0)
 
-        return scale_wrap
+        return seeker_wrap
 
     def _create_play_box(self):
         play_box = Gtk.HBox()
