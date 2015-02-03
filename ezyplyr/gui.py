@@ -243,70 +243,98 @@ class Player(GObject.GObject):
         return True
 
 
-class MusicWindow(Gtk.Window):
-    def __init__(self):
-        Gtk.Window.__init__(self, title=NAME)
-
-        self.plst = Gtk.ListStore(models.Song)
-        self.tree_library = Gtk.TreeStore(models.MusicBase)
-
-        self.scale = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False)
-        self.title = Gtk.Label('Welcome to {}!'.format(NAME))
-        self.curr_time = Gtk.Label('00:00')
-        self.play_pause = Gtk.Button()
-
-        self.settings = Settings()
-        self.shuffle_menu = Gtk.CheckMenuItem(_('Shuffle'))
-        self.repeat_menu = Gtk.CheckMenuItem(_('Repeat'))
-        self.group_menu = Gtk.CheckMenuItem(_('Group by Album artist'))
-
-        self._init_gui()
-        self.show_all()
-
+class SignalHandler(object):
+    def __init__(self, window):
+        self.window = window
         self.player = Player()
-        self.player.connect(self.player.ENDED, self.skip_forward)
-        self.player.connect(self.player.UPDATED, self._update_gui)
+        self.settings = Settings()
         self.curr = 0
 
-    def _init_gui(self):
-        self.set_border_width(3)
-        self.set_default_size(800, 400)
-        self.set_icon(Pixbuf.new_from_file(os.path.join(RESOURCES, 'icon.ico')))
-        self.connect("delete-event", self.quit)
+    def init_signals(self):
+        self.window.connect("delete-event", self.on_delete)
 
-        play_box = self._create_play_box()
-        settings_box = self._create_settings_box()
-        custom_title = self._create_custom_title()
+        backward = utils.find_child(self.window, 'backward-button')
+        play = utils.find_child(self.window, 'play-button')
+        forward = utils.find_child(self.window, 'forward-button')
 
-        title_bar = Gtk.HeaderBar()
-        title_bar.props.show_close_button = True
-        title_bar.pack_start(play_box)
-        title_bar.pack_end(settings_box)
-        title_bar.set_custom_title(custom_title)
-        self.set_titlebar(title_bar)
+        backward.connect('clicked', self.on_backward_clicked)
+        play.connect('clicked', self.on_play_clicked)
+        forward.connect('clicked', self.on_stream_ended)
 
-        list_view = Playlist(model=self.plst)
-        list_view.connect(list_view.UPDATED, self._update_curr)
-        tree_view = SongsTree(model=self.tree_library)
+        self.player.connect(self.player.ENDED, self.on_stream_ended)
+        self.player.connect(self.player.UPDATED, self.on_stream_updated)
 
-        scrolled_tree = Gtk.ScrolledWindow()
-        scrolled_tree.add(tree_view)
-        scrolled_list = Gtk.ScrolledWindow()
-        scrolled_list.add(list_view)
+        playlist = utils.find_child(self.window, 'playlist')
+        playlist.connect(playlist.UPDATED, self.on_playlist_updated)
 
-        paned = Gtk.Paned.new(Gtk.Orientation.HORIZONTAL)
-        paned.set_position(200)
-        paned.add1(scrolled_tree)
-        paned.add2(scrolled_list)
-        self.add(paned)
+        utils.find_child(self.window, 'rescan_collection').connect(
+            'activate', self.on_rescan_activated)
+        utils.find_child(self.window, 'clear_playlist').connect(
+            'activate', self.on_clear_activated)
+        utils.find_child(self.window, 'about').connect(
+            'activate', self.on_about_activated)
 
-    def _update_curr(self, widget, data):  # TODO handle adding not at end
+        shuffle = utils.find_child(self.window, 'shuffle')
+        shuffle.set_active(self.settings.shuffle)
+        shuffle.connect('activate', self.on_shuffle_activated)
+
+        repeat = utils.find_child(self.window, 'repeat')
+        repeat.set_active(self.settings.repeat)
+        repeat.connect('activate', self.on_repeat_activated)
+
+    def on_delete(self, source, event):
+        self.window.settings.save()
+        Gtk.main_quit(source, event)
+
+    def on_stream_ended(self, widget, data=None):
+        plst = utils.find_child(self.window, 'playlist').get_model()
+
+        self.curr += 1
+        if self.curr >= len(plst):
+            self.curr = 0
+
+        tree_iter = plst.get_iter_from_string(str(self.curr))
+        song = plst.get_value(tree_iter, 0)
+        self.player.next(song.path)
+
+    def on_stream_updated(self, source, data):
+        play = utils.find_child(self.window, 'play-button')
+        if data['playing']:
+            utils.set_icon(play, 'media-playback-pause')
+        else:
+            utils.set_icon(play, 'media-playback-start')
+
+    def on_backward_clicked(self, widget, data=None):
+        plst = utils.find_child(self.window, 'playlist').get_model()
+
+        self.curr -= 1
+        if self.curr < 0:
+            self.curr = len(plst) - 1
+
+        tree_iter = plst.get_iter_from_string(str(self.curr))
+        song = plst.get_value(tree_iter, 0)
+        self.player.previous(song.path)  # FIXME first seconds move to begining
+
+    def on_play_clicked(self, widget):
+        plst = utils.find_child(self.window, 'playlist').get_model()
+
+        if len(plst) == 0:
+            return
+
+        tree_iter = plst.get_iter_from_string(str(self.curr))
+        song = plst.get_value(tree_iter, 0)
+        self.player.toggle_play(song.path)
+
+    def on_playlist_updated(self, source, data):  # TODO handle adding not at end
         pass
 
-    def clear_playlist(self, source=None):
-        self.plst.clear()
+    def on_clear_activated(self, source=None):
+        plst = utils.find_child(self.window, 'playlist').get_model()
+        plst.clear()
 
-    def rescan_collection(self, source=None):
+    def on_rescan_activated(self, source=None):
+        tree_library = utils.find_child(self.window, 'tree').get_model()
+
         def do_update():
             songs = []
             for root, dirnames, filenames in os.walk(self.settings.collection):
@@ -317,11 +345,11 @@ class MusicWindow(Gtk.Window):
 
         def callback(result=None):
             def add_iter(obj, path=None):
-                parent = self.tree_library.get_iter(path) if path else None
-                it = self.tree_library.append(parent, (obj,))
-                return self.tree_library.get_string_from_iter(it)
+                parent = tree_library.get_iter(path) if path else None
+                it = tree_library.append(parent, (obj,))
+                return tree_library.get_string_from_iter(it)
 
-            self.tree_library.clear()
+            tree_library.clear()
             artists = utils.LazyDict()
             albums = utils.LazyDict()
 
@@ -343,16 +371,18 @@ class MusicWindow(Gtk.Window):
 
         utils.async_call(do_update, callback, errback)
 
-    def quit(self, source, event):
-        self.settings.save()
-        Gtk.main_quit(source, event)
+    def on_repeat_activated(self, source):
+        self.settings.repeat = source.get_active()
 
-    def _show_about(self, widget):
+    def on_shuffle_activated(self, source):
+        self.settings.shuffle = source.get_active()
+
+    def on_about_activated(self, source):
         about = Gtk.AboutDialog(
             self, program_name=NAME, version=VERSION, modal=True,
             website=u'http://example.org/', website_label=_('Website'),
             comments=_("Music player created using Python and GTK3"),
-            transient_for=self, can_focus=False
+            transient_for=self.window, can_focus=False
         )
 
         icon_path = os.path.join(RESOURCES, 'icon32.ico')
@@ -361,6 +391,57 @@ class MusicWindow(Gtk.Window):
 
         about.run()
         about.destroy()
+
+
+class MusicWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title=NAME)
+
+        self.plst = Gtk.ListStore(models.Song)
+        self.tree_library = Gtk.TreeStore(models.MusicBase)
+
+        self.scale = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False)
+        self.title = Gtk.Label('Welcome to {}!'.format(NAME))
+        self.curr_time = Gtk.Label('00:00')
+        self.play_pause = Gtk.Button()
+
+        self.settings = Settings()
+        self._init_gui()
+
+        handler = SignalHandler(self)
+        handler.init_signals()
+
+        self.show_all()
+
+    def _init_gui(self):
+        self.set_border_width(3)
+        self.set_default_size(800, 400)
+        self.set_icon(Pixbuf.new_from_file(os.path.join(RESOURCES, 'icon.ico')))
+
+        play_box = self._create_play_box()
+        settings_box = self._create_settings_box()
+        custom_title = self._create_custom_title()
+
+        title_bar = Gtk.HeaderBar()
+        title_bar.props.show_close_button = True
+        title_bar.pack_start(play_box)
+        title_bar.pack_end(settings_box)
+        title_bar.set_custom_title(custom_title)
+        self.set_titlebar(title_bar)
+
+        list_view = Playlist(model=self.plst, name='playlist')
+        tree_view = SongsTree(model=self.tree_library, name='tree')
+
+        scrolled_tree = Gtk.ScrolledWindow()
+        scrolled_tree.add(tree_view)
+        scrolled_list = Gtk.ScrolledWindow()
+        scrolled_list.add(list_view)
+
+        paned = Gtk.Paned.new(Gtk.Orientation.HORIZONTAL)
+        paned.set_position(200)
+        paned.add1(scrolled_tree)
+        paned.add2(scrolled_list)
+        self.add(paned)
 
     def _create_custom_title(self):  # TODO: Update on song (title,current_time)
         scale_wrap = Gtk.VBox(spacing=3)
@@ -378,53 +459,19 @@ class MusicWindow(Gtk.Window):
         play_box = Gtk.HBox()
         Gtk.StyleContext.add_class(play_box.get_style_context(), "linked")
 
-        backward = Gtk.Button()
+        backward = Gtk.Button(name='backward-button')
         utils.set_icon(backward, 'media-skip-backward')
         play_box.add(backward)
-        backward.connect('clicked', self.skip_back)
 
+        self.play_pause.set_name('play-button')
         utils.set_icon(self.play_pause, 'media-playback-start')
         play_box.add(self.play_pause)
-        self.play_pause.connect('clicked', self.toggle_play)
 
-        forward = Gtk.Button()
+        forward = Gtk.Button(name='forward-button')
         utils.set_icon(forward, 'media-skip-forward')
         play_box.add(forward)
-        forward.connect('clicked', self.skip_forward)
 
         return play_box
-
-    def skip_back(self, widget, data=None):
-        self.curr -= 1
-        if self.curr < 0:
-            self.curr = len(self.plst) - 1
-
-        tree_iter = self.plst.get_iter_from_string(str(self.curr))
-        song = self.plst.get_value(tree_iter, 0)
-        self.player.previous(song.path)
-
-    def skip_forward(self, widget, data=None):
-        self.curr += 1
-        if self.curr >= len(self.plst):
-            self.curr = 0
-
-        tree_iter = self.plst.get_iter_from_string(str(self.curr))
-        song = self.plst.get_value(tree_iter, 0)
-        self.player.next(song.path)
-
-    def toggle_play(self, widget):
-        if len(self.plst) == 0:
-            return
-
-        tree_iter = self.plst.get_iter_from_string(str(self.curr))
-        song = self.plst.get_value(tree_iter, 0)
-        self.player.toggle_play(song.path)
-
-    def _update_gui(self, widget, data):
-        if data['playing']:
-            utils.set_icon(self.play_pause, 'media-playback-pause')
-        else:
-            utils.set_icon(self.play_pause, 'media-playback-start')
 
     def _create_settings_box(self):
         menu = Gtk.Menu()
@@ -433,27 +480,18 @@ class MusicWindow(Gtk.Window):
         button = Gtk.MenuButton(popup=menu)
         utils.set_icon(button, "emblem-system")
 
-        items = ((self.shuffle_menu, self._toggle_shuffle),
-                 (self.repeat_menu, self._toggle_repeat),
+        items = ((Gtk.CheckMenuItem(_('Shuffle')), 'shuffle'),
+                 (Gtk.CheckMenuItem(_('Repeat')), 'repeat'),
                  (Gtk.SeparatorMenuItem(), None),
-                 (Gtk.MenuItem(_('Rescan collection')), self.rescan_collection),
-                 (Gtk.MenuItem(_('Clear playlist')), self.clear_playlist),
+                 (Gtk.MenuItem(_('Rescan collection')), 'rescan_collection'),
+                 (Gtk.MenuItem(_('Clear playlist')), 'clear_playlist'),
                  (Gtk.SeparatorMenuItem(), None),
-                 (Gtk.MenuItem(_('About')), self._show_about))
+                 (Gtk.MenuItem(_('About')), 'about'))
 
-        for item, action in items:
-            if action:
-                item.connect('activate', action)
+        for item, name in items:
+            if name:
+                item.set_name(name)
             item.show()
             menu.append(item)
 
-        self.shuffle_menu.set_active(self.settings.shuffle)
-        self.repeat_menu.set_active(self.settings.repeat)
-
         return button
-
-    def _toggle_repeat(self, source):
-        self.settings.repeat = source.get_active()
-
-    def _toggle_shuffle(self, source):
-        self.settings.shuffle = source.get_active()
