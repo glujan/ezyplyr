@@ -10,11 +10,12 @@ Install also dependencies from [requirements.txt](./requirements.txt).
 
 ## Caution
 
-It's unusable. It can't play any music. Someday it should, but not yet.
+It's not ready yet. It can play music but only `mp3`. Seeker does not work. You can't rearrange order of songs. Someday it should work, but not yet.
 
 ## Future
 Listed by importance
 * Actual creation of a player :crying_cat_face:
+* Storing scanned library
 * MPRIS v2 support
 * Reading lyrics stored in music file
 * Pluggable interfaces (like in [GMusicBrowser](http://gmusicbrowser.org/))
@@ -25,7 +26,7 @@ Listed by importance
 [Nah](https://www.youtube.com/watch?v=YYHTMhujUFE).
 
 ### Can it even play music?
-Nah. Not yet. [It's too bad](https://www.youtube.com/watch?v=8sGShK7YNeA).
+Yep. But not too much file formats. Not yet. [It's too bad](https://www.youtube.com/watch?v=8sGShK7YNeA).
 
 ### Will it support playlists?
 Nah. Not for know. But in the future - [who knows](http://vimeo.com/58229191).
