@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+from __future__ import unicode_literals
 
 from gi import require_version
 from gi.repository import Gst, Gtk, Notify
