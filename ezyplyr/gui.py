@@ -4,10 +4,11 @@
 import fnmatch
 import itertools
 import logging
-import urllib
 import os
+import random
+import urllib
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Gst, GObject
 from gi.repository.GdkPixbuf import Pixbuf
 
 import models
@@ -135,6 +136,79 @@ class SongsTree(Gtk.TreeView):
         cell.set_property('text', unicode(item))
 
 
+class Player(object):
+    def __init__(self):
+        Gst.init_check(None)
+        self.playing = False
+        self.player = None
+        self.path = None
+
+        self._init_player()
+
+    def _init_player(self):
+        self.player = Gst.ElementFactory.make("playbin", "player")
+        pulse = Gst.ElementFactory.make("pulsesink", "pulse")
+        self.player.set_property("audio-sink", pulse)
+        self.player.set_state(Gst.State.NULL)
+        bus = self.player.get_bus()
+        bus.add_signal_watch()
+        bus.connect("message", self.on_message)
+
+    def toggle_play(self, path=None):
+        if self.playing:
+            self.pause()
+        else:
+            self.play(path)
+
+    def play(self, path=None):
+        if self.path != path:
+            self.path = path
+            uri = 'file://' + urllib.pathname2url(path)
+            self.player.set_property("uri", uri)
+
+        self.player.set_state(Gst.State.PLAYING)
+        self.playing = True
+        GObject.timeout_add(1000, self.update)
+
+    def pause(self):
+        self.player.set_state(Gst.State.PAUSED)
+        self.playing = False
+
+    def stop(self):
+        self.player.set_state(Gst.State.NULL)
+        self.playing = False
+        self.path = None
+
+    def previous(self, path):
+        nanosecs = self.player.query_position(Gst.Format.TIME)[1]
+        self.stop()
+        if nanosecs > 5000000000:
+            self.play(path)
+        else:
+            self.play(self.path)
+
+    def next(self, path):
+        self.stop()
+        self.play(path)
+
+    def on_message(self, bus, message):
+        t = message.type
+
+        if t == Gst.MessageType.EOS:
+            self.stop()  # TODO get next from GUI
+        elif t == Gst.MessageType.ERROR:
+            self.stop()
+            err, debug = message.parse_error()
+            logger.error(err, debug)
+
+    def update(self):
+        if self.playing is False:
+            return False
+        nanosecs = self.player.query_position(Gst.Format.TIME)[1]
+        duration_nanosecs = self.player.query_duration(Gst.Format.TIME)[1]
+        return True
+
+
 class MusicWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title=NAME)
@@ -153,6 +227,8 @@ class MusicWindow(Gtk.Window):
 
         self._init_gui()
         self.show_all()
+
+        self.player = Player()
 
     def _init_gui(self):
         self.set_border_width(3)
@@ -256,23 +332,48 @@ class MusicWindow(Gtk.Window):
 
         return scale_wrap
 
-    def _create_play_box(self):  # TODO: Attach signals
+    def _create_play_box(self):
         play_box = Gtk.HBox()
         Gtk.StyleContext.add_class(play_box.get_style_context(), "linked")
 
-        button = Gtk.Button()
-        utils.add_icon(button, 'media-skip-backward')
-        play_box.add(button)
+        backward = Gtk.Button()
+        utils.add_icon(backward, 'media-skip-backward')
+        play_box.add(backward)
+        backward.connect('clicked', self.skip_back)
 
-        button = Gtk.Button()
-        utils.add_icon(button, 'media-playback-start')
-        play_box.add(button)
+        play_pause = Gtk.Button()
+        utils.add_icon(play_pause, 'media-playback-start')
+        play_box.add(play_pause)
+        play_pause.connect('clicked', self.toggle_play)
 
-        button = Gtk.Button()
-        utils.add_icon(button, 'media-skip-forward')
-        play_box.add(button)
+        forward = Gtk.Button()
+        utils.add_icon(forward, 'media-skip-forward')
+        play_box.add(forward)
+        forward.connect('clicked', self.skip_forward)
 
         return play_box
+
+    def skip_back(self, widget):
+        curr = random.randrange(0, len(self.plst))  # FIXME select REAL previous
+        tree_iter = self.plst.get_iter_from_string(str(curr))
+        song = self.plst.get_value(tree_iter, 0)
+        self.player.previous(song.path)
+
+    def skip_forward(self, widget):
+        curr = random.randrange(0, len(self.plst))  # FIXME select REAL next
+        tree_iter = self.plst.get_iter_from_string(str(curr))
+        song = self.plst.get_value(tree_iter, 0)
+        self.player.next(song.path)
+
+    def toggle_play(self, widget):
+        if len(self.plst) == 0:
+            return
+        elif self.settings.shuffle:
+            curr = random.randrange(0, len(self.plst))
+        curr = 0  # FIXME quite nasty
+        tree_iter = self.plst.get_iter_from_string(str(curr))
+        song = self.plst.get_value(tree_iter, 0)
+        self.player.toggle_play(song.path)
 
     def _create_settings_box(self):
         menu = Gtk.Menu()

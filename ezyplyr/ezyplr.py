@@ -3,7 +3,7 @@
 
 
 from gi import require_version
-from gi.repository import Gtk, Notify
+from gi.repository import Gst, Gtk, Notify
 
 from gui import MusicWindow, NAME
 
@@ -18,5 +18,6 @@ if __name__ == '__main__':
     logging.basicConfig()
 
     Notify.init(NAME)
+    Gst.init(None)
     app = MusicWindow()
     Gtk.main()
