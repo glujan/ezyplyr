@@ -24,7 +24,7 @@ VERSION = '0.1'
 SONG_INFO = 0
 
 
-class Playlist(Gtk.TreeView):
+class EzyPlaylist(Gtk.TreeView):
 
     UPDATED = 'playlist-updated'
 
@@ -82,9 +82,9 @@ class Playlist(Gtk.TreeView):
         cell.set_property('text', str(value or '').decode('utf8'))
 
 
-class SongsTree(Gtk.TreeView):
+class EzySongsTree(Gtk.TreeView):
     def __init__(self, *args, **kwargs):
-        super(SongsTree, self).__init__(*args, **kwargs)
+        super(EzySongsTree, self).__init__(*args, **kwargs)
 
         self.set_search_column(0)
         self.set_enable_search(True)
@@ -147,13 +147,13 @@ class SongsTree(Gtk.TreeView):
         cell.set_property('text', unicode(item))
 
 
-class Player(GObject.GObject):
+class EzyGstPlayer(GObject.GObject):
 
     ENDED = 'stream-ended'
     UPDATED = 'stream-updated'
 
     def __init__(self, **kwargs):
-        super(Player, self).__init__()
+        super(EzyGstPlayer, self).__init__()
         self.set_properties(**kwargs)
 
         Gst.init_check(None)
@@ -239,10 +239,10 @@ class Player(GObject.GObject):
         return True
 
 
-class SignalHandler(object):
+class EzySignalHandler(object):
     def __init__(self, window):
         self.window = window
-        self.player = Player()
+        self.player = EzyGstPlayer()
         self.settings = Settings()
         self.curr = 0
 
@@ -461,13 +461,13 @@ class EzyHeaderBar(Gtk.HeaderBar):
         return button
 
 
-class MusicWindow(Gtk.Window):
+class EzyWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title=NAME)
 
         self._init_gui()
 
-        handler = SignalHandler(self)
+        handler = EzySignalHandler(self)
         handler.init_signals()
 
         self.show_all()
@@ -482,8 +482,8 @@ class MusicWindow(Gtk.Window):
 
         plst = Gtk.ListStore(models.Song)
         tree_library = Gtk.TreeStore(models.MusicBase)
-        list_view = Playlist(model=plst, name='playlist')
-        tree_view = SongsTree(model=tree_library, name='tree')
+        list_view = EzyPlaylist(model=plst, name='playlist')
+        tree_view = EzySongsTree(model=tree_library, name='tree')
 
         scrolled_tree = Gtk.ScrolledWindow()
         scrolled_tree.add(tree_view)

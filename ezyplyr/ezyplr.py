@@ -5,7 +5,7 @@
 from gi import require_version
 from gi.repository import Gst, Gtk, Notify
 
-from gui import MusicWindow, NAME
+from gui import EzyWindow, NAME
 
 require_version('Gst', '1.0')
 
@@ -19,5 +19,5 @@ if __name__ == '__main__':
 
     Notify.init(NAME)
     Gst.init(None)
-    app = MusicWindow()
+    app = EzyWindow()
     Gtk.main()
