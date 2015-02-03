@@ -5,7 +5,6 @@ import fnmatch
 import itertools
 import logging
 import os
-import random
 import urllib
 
 from gi.repository import Gdk, Gtk, Gst, GObject
@@ -26,6 +25,9 @@ SONG_INFO = 0
 
 
 class Playlist(Gtk.TreeView):
+
+    UPDATED = 'playlist-updated'
+
     def __init__(self, *args, **kwargs):
         super(Gtk.TreeView, self).__init__(*args, **kwargs)
 
@@ -53,9 +55,16 @@ class Playlist(Gtk.TreeView):
             # column.set_fixed_width(80)
             self.append_column(column)
 
+        self._init_signals()
+
+    def _init_signals(self):
         self.enable_model_drag_dest([], Gdk.DragAction.COPY)
         self.drag_dest_add_uri_targets()
         self.connect('drag-data-received', self._on_drag_data_received)
+
+        GObject.signal_new(self.UPDATED, self,
+                           GObject.SIGNAL_RUN_LAST, GObject.TYPE_PYOBJECT,
+                           (GObject.TYPE_PYOBJECT,))
 
     def _on_drag_data_received(self, widget, drag_context, x, y, data,
                                info, time):
@@ -64,6 +73,8 @@ class Playlist(Gtk.TreeView):
             for uri in data.get_uris():
                 s = models.Song(path=urllib.url2pathname(uri))
                 model.append((s,))
+            self.emit('playlist-updated', {'added': len(data.get_uris()),
+                                           'position': -1})
 
     def _cell_data_func(self, column, cell, model, iter, data):
         item = model.get_value(iter, 0)
@@ -136,23 +147,39 @@ class SongsTree(Gtk.TreeView):
         cell.set_property('text', unicode(item))
 
 
-class Player(object):
-    def __init__(self):
+class Player(GObject.GObject):
+
+    ENDED = 'stream-ended'
+    UPDATED = 'stream-updated'
+
+    def __init__(self, **kwargs):
+        super(Player, self).__init__()
+        self.set_properties(**kwargs)
+
         Gst.init_check(None)
         self.playing = False
         self.player = None
         self.path = None
 
         self._init_player()
+        self._init_signals()
 
     def _init_player(self):
         self.player = Gst.ElementFactory.make("playbin", "player")
         pulse = Gst.ElementFactory.make("pulsesink", "pulse")
         self.player.set_property("audio-sink", pulse)
         self.player.set_state(Gst.State.NULL)
+
+    def _init_signals(self):
         bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.connect("message", self.on_message)
+
+        GObject.signal_new(self.ENDED, self, GObject.SIGNAL_RUN_LAST,
+                           GObject.TYPE_PYOBJECT, (GObject.TYPE_PYOBJECT,))
+
+        GObject.signal_new(self.UPDATED, self, GObject.SIGNAL_RUN_LAST,
+                           GObject.TYPE_PYOBJECT, (GObject.TYPE_PYOBJECT,))
 
     def toggle_play(self, path=None):
         if self.playing:
@@ -168,11 +195,13 @@ class Player(object):
 
         self.player.set_state(Gst.State.PLAYING)
         self.playing = True
+        self.update()
         GObject.timeout_add(1000, self.update)
 
     def pause(self):
         self.player.set_state(Gst.State.PAUSED)
         self.playing = False
+        self.update()
 
     def stop(self):
         self.player.set_state(Gst.State.NULL)
@@ -195,7 +224,8 @@ class Player(object):
         t = message.type
 
         if t == Gst.MessageType.EOS:
-            self.stop()  # TODO get next from GUI
+            self.stop()
+            self.emit(self.ENDED, None)
         elif t == Gst.MessageType.ERROR:
             self.stop()
             err, debug = message.parse_error()
@@ -203,9 +233,13 @@ class Player(object):
 
     def update(self):
         if self.playing is False:
+            self.emit(self.UPDATED, {'playing': False})
             return False
         nanosecs = self.player.query_position(Gst.Format.TIME)[1]
         duration_nanosecs = self.player.query_duration(Gst.Format.TIME)[1]
+        self.emit(self.UPDATED, {'position': nanosecs,
+                                 'duraion': duration_nanosecs,
+                                 'playing': True})
         return True
 
 
@@ -219,6 +253,7 @@ class MusicWindow(Gtk.Window):
         self.scale = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False)
         self.title = Gtk.Label('Welcome to {}!'.format(NAME))
         self.curr_time = Gtk.Label('00:00')
+        self.play_pause = Gtk.Button()
 
         self.settings = Settings()
         self.shuffle_menu = Gtk.CheckMenuItem(_('Shuffle'))
@@ -229,6 +264,9 @@ class MusicWindow(Gtk.Window):
         self.show_all()
 
         self.player = Player()
+        self.player.connect(self.player.ENDED, self.skip_forward)
+        self.player.connect(self.player.UPDATED, self._update_gui)
+        self.curr = 0
 
     def _init_gui(self):
         self.set_border_width(3)
@@ -248,6 +286,7 @@ class MusicWindow(Gtk.Window):
         self.set_titlebar(title_bar)
 
         list_view = Playlist(model=self.plst)
+        list_view.connect(list_view.UPDATED, self._update_curr)
         tree_view = SongsTree(model=self.tree_library)
 
         scrolled_tree = Gtk.ScrolledWindow()
@@ -260,6 +299,9 @@ class MusicWindow(Gtk.Window):
         paned.add1(scrolled_tree)
         paned.add2(scrolled_list)
         self.add(paned)
+
+    def _update_curr(self, widget, data):  # TODO handle adding not at end
+        pass
 
     def clear_playlist(self, source=None):
         self.plst.clear()
@@ -341,10 +383,9 @@ class MusicWindow(Gtk.Window):
         play_box.add(backward)
         backward.connect('clicked', self.skip_back)
 
-        play_pause = Gtk.Button()
-        utils.set_icon(play_pause, 'media-playback-start')
-        play_box.add(play_pause)
-        play_pause.connect('clicked', self.toggle_play)
+        utils.set_icon(self.play_pause, 'media-playback-start')
+        play_box.add(self.play_pause)
+        self.play_pause.connect('clicked', self.toggle_play)
 
         forward = Gtk.Button()
         utils.set_icon(forward, 'media-skip-forward')
@@ -353,27 +394,37 @@ class MusicWindow(Gtk.Window):
 
         return play_box
 
-    def skip_back(self, widget):
-        curr = random.randrange(0, len(self.plst))  # FIXME select REAL previous
-        tree_iter = self.plst.get_iter_from_string(str(curr))
+    def skip_back(self, widget, data=None):
+        self.curr -= 1
+        if self.curr < 0:
+            self.curr = len(self.plst) - 1
+
+        tree_iter = self.plst.get_iter_from_string(str(self.curr))
         song = self.plst.get_value(tree_iter, 0)
         self.player.previous(song.path)
 
-    def skip_forward(self, widget):
-        curr = random.randrange(0, len(self.plst))  # FIXME select REAL next
-        tree_iter = self.plst.get_iter_from_string(str(curr))
+    def skip_forward(self, widget, data=None):
+        self.curr += 1
+        if self.curr >= len(self.plst):
+            self.curr = 0
+
+        tree_iter = self.plst.get_iter_from_string(str(self.curr))
         song = self.plst.get_value(tree_iter, 0)
         self.player.next(song.path)
 
     def toggle_play(self, widget):
         if len(self.plst) == 0:
             return
-        elif self.settings.shuffle:
-            curr = random.randrange(0, len(self.plst))
-        curr = 0  # FIXME quite nasty
-        tree_iter = self.plst.get_iter_from_string(str(curr))
+
+        tree_iter = self.plst.get_iter_from_string(str(self.curr))
         song = self.plst.get_value(tree_iter, 0)
         self.player.toggle_play(song.path)
+
+    def _update_gui(self, widget, data):
+        if data['playing']:
+            utils.set_icon(self.play_pause, 'media-playback-pause')
+        else:
+            utils.set_icon(self.play_pause, 'media-playback-start')
 
     def _create_settings_box(self):
         menu = Gtk.Menu()
