@@ -337,17 +337,17 @@ class MusicWindow(Gtk.Window):
         Gtk.StyleContext.add_class(play_box.get_style_context(), "linked")
 
         backward = Gtk.Button()
-        utils.add_icon(backward, 'media-skip-backward')
+        utils.set_icon(backward, 'media-skip-backward')
         play_box.add(backward)
         backward.connect('clicked', self.skip_back)
 
         play_pause = Gtk.Button()
-        utils.add_icon(play_pause, 'media-playback-start')
+        utils.set_icon(play_pause, 'media-playback-start')
         play_box.add(play_pause)
         play_pause.connect('clicked', self.toggle_play)
 
         forward = Gtk.Button()
-        utils.add_icon(forward, 'media-skip-forward')
+        utils.set_icon(forward, 'media-skip-forward')
         play_box.add(forward)
         forward.connect('clicked', self.skip_forward)
 
@@ -380,7 +380,7 @@ class MusicWindow(Gtk.Window):
         menu.set_halign(Gtk.Align.CENTER)
 
         button = Gtk.MenuButton(popup=menu)
-        utils.add_icon(button, "emblem-system")
+        utils.set_icon(button, "emblem-system")
 
         items = ((self.shuffle_menu, self._toggle_shuffle),
                  (self.repeat_menu, self._toggle_repeat),

@@ -10,12 +10,12 @@ t = gettext.translation('ezyplyr', 'locale', fallback=True)
 ugettext = t.ugettext
 
 
-def add_icon(button, icon_name, size=None):
+def set_icon(button, icon_name, size=None):
     if not size:
         size = Gtk.IconSize.LARGE_TOOLBAR
     icon = Gio.ThemedIcon(name=icon_name)
     image = Gtk.Image.new_from_gicon(icon, size)
-    button.add(image)
+    button.set_image(image)
 
 
 def sort_func(model, row1, row2, user_data):
