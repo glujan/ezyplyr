@@ -12,6 +12,13 @@ Install also dependencies from [requirements.txt](./requirements.txt).
 
 It's unusable. It can't play any music. Someday it should, but not yet.
 
+## Future
+Listed by importance
+* Actual creation of a player :crying_cat_face:
+* MPRIS v2 support
+* Reading lyrics stored in music file
+* Pluggable interfaces (like in [GMusicBrowser](http://gmusicbrowser.org/))
+
 ## FAQ
 
 ### This name is stupid. Change it.
