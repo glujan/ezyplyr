@@ -304,15 +304,21 @@ class EzySignalHandler(object):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
         if self.settings.shuffle:
-            self.curr = randrange(0, len(plst))
+            curr = randrange(0, len(plst))
         else:
-            self.curr += 1
-            if self.curr >= len(plst):
-                self.curr = 0
+            curr = self.curr + 1
 
-        tree_iter = plst.get_iter_from_string(str(self.curr))
+        if curr >= len(plst):
+            if self.settings.repeat:
+                curr = 0
+            else:
+                self.player.stop()
+                return
+
+        tree_iter = plst.get_iter_from_string(str(curr))
         song = plst.get_value(tree_iter, 0)
         self.player.next(song.path)
+        self.curr = curr
 
     def on_stream_updated(self, source, data):
         if data.get('playing', False):
@@ -333,15 +339,21 @@ class EzySignalHandler(object):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
         if self.settings.shuffle:
-            self.curr = randrange(0, len(plst))
+            curr = randrange(0, len(plst))
         else:
-            self.curr -= 1
-            if self.curr < 0:
-                self.curr = len(plst) - 1
+            curr = self.curr - 1
+
+        if curr < 0:
+            if self.settings.repeat:
+                curr = len(plst) - 1
+            else:
+                self.player.seek(0)
+                return
 
         tree_iter = plst.get_iter_from_string(str(self.curr))
         song = plst.get_value(tree_iter, 0)
         self.player.previous(song.path)    # TODO first seconds move to begining
+        self.curr = curr
 
     def on_play_clicked(self, source):
         plst = utils.find_child(self.window, 'playlist').get_model()
