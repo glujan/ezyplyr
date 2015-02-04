@@ -8,6 +8,7 @@ import itertools
 import logging
 import os
 import urllib
+from random import randrange
 
 from gi.repository import Gdk, Gtk, Gst, GObject
 from gi.repository.GdkPixbuf import Pixbuf
@@ -302,16 +303,18 @@ class EzySignalHandler(object):
     def on_stream_ended(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
-        self.curr += 1
-        if self.curr >= len(plst):
-            self.curr = 0
+        if self.settings.shuffle:
+            self.curr = randrange(0, len(plst))
+        else:
+            self.curr += 1
+            if self.curr >= len(plst):
+                self.curr = 0
 
         tree_iter = plst.get_iter_from_string(str(self.curr))
         song = plst.get_value(tree_iter, 0)
         self.player.next(song.path)
 
     def on_stream_updated(self, source, data):
-
         if data.get('playing', False):
             plst = utils.find_child(self.window, 'playlist').get_model()
             tree_iter = plst.get_iter_from_string(str(self.curr))
@@ -329,9 +332,12 @@ class EzySignalHandler(object):
     def on_backward_clicked(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
-        self.curr -= 1
-        if self.curr < 0:
-            self.curr = len(plst) - 1
+        if self.settings.shuffle:
+            self.curr = randrange(0, len(plst))
+        else:
+            self.curr -= 1
+            if self.curr < 0:
+                self.curr = len(plst) - 1
 
         tree_iter = plst.get_iter_from_string(str(self.curr))
         song = plst.get_value(tree_iter, 0)
