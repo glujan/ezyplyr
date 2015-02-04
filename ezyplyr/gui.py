@@ -486,6 +486,7 @@ class EzyHeaderBar(Gtk.HeaderBar):
         self.pack_start(play_box)
         self.pack_end(settings_box)
         self.set_custom_title(custom_title)
+        self.set_title(NAME)
 
     def _create_custom_title(self):
         seeker = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False,
