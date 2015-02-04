@@ -321,8 +321,8 @@ class EzySignalHandler(object):
             song = plst.get_value(tree_iter, 0)
 
             utils.set_icon(play, 'media-playback-pause')
-            duration_secs = data.get('duration', 0) // 1000000000
-            position_secs = data.get('position', 0) // 1000000000
+            duration_secs = data.get('duration', 0) // Gst.SECOND
+            position_secs = data.get('position', 0) // Gst.SECOND
 
             title.set_text('{} - {}'.format(song.title, song.artist))
             seeker.set_range(0, duration_secs)
