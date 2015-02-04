@@ -191,6 +191,7 @@ class EzyGstPlayer(GObject.GObject):
 
     def play(self, path=None):
         if self.path != path:
+            self.stop()
             self.path = path
             uri = 'file://' + urllib.pathname2url(path)
             self.player.set_property("uri", uri)
@@ -264,6 +265,7 @@ class EzySignalHandler(object):
 
         playlist = utils.find_child(self.window, 'playlist')
         playlist.connect(playlist.UPDATED, self.on_playlist_updated)
+        playlist.connect('row-activated', self.on_playlist_double_clicked)
 
         utils.find_child(self.window, 'rescan_collection').connect(
             'activate', self.on_rescan_activated)
@@ -340,6 +342,13 @@ class EzySignalHandler(object):
 
     def on_playlist_updated(self, source, data):  # TODO handle adding not at end
         pass
+
+    def on_playlist_double_clicked(self, source, path, column):
+        self.curr = int(path.to_string())
+        model = source.get_model()
+        tree_iter = model.get_iter(path)
+        song = model.get_value(tree_iter, 0)
+        self.player.play(song.path)
 
     def on_clear_activated(self, source=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
@@ -421,7 +430,7 @@ class EzyHeaderBar(Gtk.HeaderBar):
 
     def _create_custom_title(self):
         seeker = Gtk.HScale(adjustment=Gtk.Adjustment(), draw_value=False,
-                           name='seeker')
+                            name='seeker')
         title = Gtk.Label('Welcome to {}!'.format(NAME), name='title-label')
         curr_time = Gtk.Label('00:00', name='time-label')
 
