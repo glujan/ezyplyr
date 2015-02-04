@@ -210,6 +210,7 @@ class EzyGstPlayer(GObject.GObject):
         self.player.set_state(Gst.State.NULL)
         self.playing = False
         self.path = None
+        self.update()
 
     def previous(self, path):
         self.stop()
@@ -310,26 +311,20 @@ class EzySignalHandler(object):
         self.player.next(song.path)
 
     def on_stream_updated(self, source, data):
-        plst = utils.find_child(self.window, 'playlist').get_model()
-        play = utils.find_child(self.window, 'play-button')
-        time = utils.find_child(self.window, 'time-label')
-        title = utils.find_child(self.window, 'title-label')
-        seeker = utils.find_child(self.window, 'seeker')
 
-        if data['playing']:
+        if data.get('playing', False):
+            plst = utils.find_child(self.window, 'playlist').get_model()
             tree_iter = plst.get_iter_from_string(str(self.curr))
             song = plst.get_value(tree_iter, 0)
 
-            utils.set_icon(play, 'media-playback-pause')
             duration_secs = data.get('duration', 0) // Gst.SECOND
             position_secs = data.get('position', 0) // Gst.SECOND
+            title = '{} - {}'.format(song.title, song.artist)
 
-            title.set_text('{} - {}'.format(song.title, song.artist))
-            seeker.set_range(0, duration_secs)
-            seeker.set_value(position_secs)
-            time.set_text(utils.get_time(position_secs))
+            self.window.update_gui(title, position_secs, duration_secs,
+                                   'media-playback-pause')
         else:
-            utils.set_icon(play, 'media-playback-start')
+            self.window.update_gui(NAME, 0, 0)
 
     def on_backward_clicked(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
@@ -363,6 +358,7 @@ class EzySignalHandler(object):
         self.player.play(song.path)
 
     def on_clear_activated(self, source=None):
+        self.player.stop()
         plst = utils.find_child(self.window, 'playlist').get_model()
         plst.clear()
 
@@ -509,6 +505,21 @@ class EzyWindow(Gtk.Window):
         handler.init_signals()
 
         self.show_all()
+
+    def update_gui(self, title, time_secs, seeker_max=0, play_icon=None):
+        title_label = utils.find_child(self, 'title-label')
+        time_label = utils.find_child(self, 'time-label')
+        seeker = utils.find_child(self, 'seeker')
+        play = utils.find_child(self, 'play-button')
+
+        title_label.set_text(title)
+        time_label.set_text(utils.get_time(time_secs))
+        seeker.set_value(time_secs)
+        if seeker_max > 0:
+            seeker.set_range(0, seeker_max)
+        if play_icon is None:
+            play_icon = 'media-playback-start'
+        utils.set_icon(play, play_icon)
 
     def _init_gui(self):
         self.set_border_width(3)
