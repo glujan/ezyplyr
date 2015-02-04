@@ -161,11 +161,23 @@ class EzyGstPlayer(GObject.GObject):
 
         Gst.init_check(None)
         self.playing = False
+        self.stopped = False
         self.player = None
-        self.path = None
+        self._path = None
 
         self._init_player()
         self._init_signals()
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, value):
+        if self._path != value:
+            self._path = value
+            uri = 'file://' + urllib.pathname2url(self._path)
+            self.player.set_property("uri", uri)
 
     def _init_player(self):
         self.player = Gst.ElementFactory.make("playbin", "player")
@@ -192,25 +204,25 @@ class EzyGstPlayer(GObject.GObject):
 
     def play(self, path=None):
         if self.path != path:
-            self.stop()
+            self.player.set_state(Gst.State.NULL)
             self.path = path
-            uri = 'file://' + urllib.pathname2url(path)
-            self.player.set_property("uri", uri)
 
         self.player.set_state(Gst.State.PLAYING)
         self.playing = True
+        self.stopped = False
         self.update()
         GObject.timeout_add(1000, self.update)
 
     def pause(self):
         self.player.set_state(Gst.State.PAUSED)
         self.playing = False
+        self.stopped = False
         self.update()
 
     def stop(self):
         self.player.set_state(Gst.State.NULL)
         self.playing = False
-        self.path = None
+        self.stopped = True
         self.update()
 
     def previous(self, path):
@@ -218,10 +230,12 @@ class EzyGstPlayer(GObject.GObject):
         self.play(path)
 
     def next(self, path):
-        self.stop()
         self.play(path)
 
     def seek(self, nanosecs):
+        if self.stopped and self.path:
+            self.play()
+            self.pause()
         self.player.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH,
                                 nanosecs)
         self.update()
@@ -238,15 +252,20 @@ class EzyGstPlayer(GObject.GObject):
             logger.error(err, debug)
 
     def update(self):
-        if self.playing is False:
-            self.emit(self.UPDATED, {'playing': False})
-            return False
-        nanosecs = self.player.query_position(Gst.Format.TIME)[1]
-        duration_nanosecs = self.player.query_duration(Gst.Format.TIME)[1]
-        self.emit(self.UPDATED, {'position': nanosecs,
-                                 'duration': duration_nanosecs,
-                                 'playing': True})
-        return True
+        data = {}
+
+        if self.stopped:
+            data = {'playing': self.playing, 'stopped': self.stopped}
+        else:
+            nanosecs = self.player.query_position(Gst.Format.TIME)[1]
+            duration_nanosecs = self.player.query_duration(Gst.Format.TIME)[1]
+            data = {'position': nanosecs,
+                    'duration': duration_nanosecs,
+                    'playing': self.playing,
+                    'stopped': self.stopped}
+
+        self.emit(self.UPDATED, data)
+        return self.playing
 
 
 class EzySignalHandler(object):
@@ -293,7 +312,15 @@ class EzySignalHandler(object):
         seeker.connect('change-value', self.on_seeker_clicked)
 
     def on_seeker_clicked(self, source, scroll, value):
+        plst = utils.find_child(self.window, 'playlist').get_model()
+
+        if len(plst) == 0:
+            return
+
         value *= Gst.SECOND
+        tree_iter = plst.get_iter_from_string(str(self.curr))
+        song = plst.get_value(tree_iter, 0)
+        self.player.path = song.path
         self.player.seek(value)
 
     def on_delete(self, source, event):
@@ -321,7 +348,10 @@ class EzySignalHandler(object):
         self.curr = curr
 
     def on_stream_updated(self, source, data):
-        if data.get('playing', False):
+        playing = data.get('playing', False)
+        stopped = data.get('stopped', False)
+
+        if playing or (stopped is False):  # playing or pause
             plst = utils.find_child(self.window, 'playlist').get_model()
             tree_iter = plst.get_iter_from_string(str(self.curr))
             song = plst.get_value(tree_iter, 0)
@@ -330,9 +360,12 @@ class EzySignalHandler(object):
             position_secs = data.get('position', 0) // Gst.SECOND
             title = '{} - {}'.format(song.title, song.artist)
 
-            self.window.update_gui(title, position_secs, duration_secs,
-                                   'media-playback-pause')
-        else:
+            icon = 'media-playback-pause'
+            if not playing:
+                icon = None
+
+            self.window.update_gui(title, position_secs, duration_secs, icon)
+        elif stopped:
             self.window.update_gui(NAME, 0, 0)
 
     def on_backward_clicked(self, source, data=None):
