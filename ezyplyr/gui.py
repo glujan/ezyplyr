@@ -219,6 +219,11 @@ class EzyGstPlayer(GObject.GObject):
         self.stop()
         self.play(path)
 
+    def seek(self, nanosecs):
+        self.player.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH,
+                                nanosecs)
+        self.update()
+
     def on_message(self, bus, message):
         t = message.type
 
@@ -281,6 +286,13 @@ class EzySignalHandler(object):
         repeat = utils.find_child(self.window, 'repeat')
         repeat.set_active(self.settings.repeat)
         repeat.connect('activate', self.on_repeat_activated)
+
+        seeker = utils.find_child(self.window, 'seeker')
+        seeker.connect('change-value', self.on_seeker_clicked)
+
+    def on_seeker_clicked(self, source, scroll, value):
+        value *= Gst.SECOND
+        self.player.seek(value)
 
     def on_delete(self, source, event):
         self.settings.save()
