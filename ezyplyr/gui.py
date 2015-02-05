@@ -69,6 +69,14 @@ class EzyPlaylist(Gtk.TreeView):
                            GObject.SIGNAL_RUN_LAST, GObject.TYPE_PYOBJECT,
                            (GObject.TYPE_PYOBJECT,))
 
+    def on_library_double_clicked(self, source, path, column):
+        songs = source._retrieve_songs(path)
+
+        model = self.get_model()
+        map(lambda s: model.append((s,)), songs)
+        self.emit('playlist-updated', {'added': len(songs),
+                                       'position': -1})
+
     def _on_drag_data_received(self, widget, drag_context, x, y, data,
                                info, time):
         if info == SONG_INFO:
@@ -114,7 +122,8 @@ class EzySongsTree(Gtk.TreeView):
             tree_store, tree_paths = selection.get_selected_rows()
             songs = (self._retrieve_songs(tp.copy()) for tp in tree_paths)
             songs = list(itertools.chain(*songs))
-            data.set_uris(songs)
+            songs_uris = map(lambda s: urllib.pathname2url(s.path), songs)
+            data.set_uris(songs_uris)
 
     def get_model_value(self, tree_path):
         song = None
@@ -136,7 +145,7 @@ class EzySongsTree(Gtk.TreeView):
         if level == 3:
             song = self.get_model_value(tree_path)
             if song:
-                items.append(urllib.pathname2url(song.path))
+                items.append(song)
                 tree_path.up()
         elif level < 3:
             tree_path.down()
@@ -298,6 +307,7 @@ class EzySignalHandler(object):
         playlist.connect(playlist.UPDATED, library.on_playlist_updated)
         playlist.connect(playlist.UPDATED, self.on_playlist_updated)
         playlist.connect('row-activated', self.on_playlist_double_clicked)
+        library.connect('row-activated', playlist.on_library_double_clicked)
 
         utils.find_child(self.window, 'rescan_collection').connect(
             'activate', self.on_rescan_activated)
