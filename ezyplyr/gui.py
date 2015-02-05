@@ -330,6 +330,9 @@ class EzySignalHandler(object):
     def on_stream_ended(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
 
+        if len(plst) == 0:
+            return
+
         if self.settings.shuffle:
             curr = randrange(0, len(plst))
         else:
@@ -370,6 +373,9 @@ class EzySignalHandler(object):
 
     def on_backward_clicked(self, source, data=None):
         plst = utils.find_child(self.window, 'playlist').get_model()
+
+        if len(plst) == 0:
+            return
 
         if self.settings.shuffle:
             curr = randrange(0, len(plst))
