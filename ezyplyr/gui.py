@@ -126,6 +126,9 @@ class EzySongsTree(Gtk.TreeView):
 
         return song
 
+    def on_playlist_updated(self, source, data):
+        self.get_selection().unselect_all()
+
     def _retrieve_songs(self, tree_path):
         level = tree_path.get_depth()
         items = []
@@ -289,7 +292,9 @@ class EzySignalHandler(object):
         self.player.connect(self.player.ENDED, self.on_stream_ended)
         self.player.connect(self.player.UPDATED, self.on_stream_updated)
 
+        library = utils.find_child(self.window, 'tree')
         playlist = utils.find_child(self.window, 'playlist')
+        playlist.connect(playlist.UPDATED, library.on_playlist_updated)
         playlist.connect(playlist.UPDATED, self.on_playlist_updated)
         playlist.connect('row-activated', self.on_playlist_double_clicked)
 
