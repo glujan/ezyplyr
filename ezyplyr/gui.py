@@ -241,7 +241,6 @@ class EzyGstPlayer(GObject.GObject):
             self.pause()
         self.player.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH,
                                 nanosecs)
-        self.update()
 
     def on_message(self, bus, message):
         t = message.type
@@ -249,6 +248,8 @@ class EzyGstPlayer(GObject.GObject):
         if t == Gst.MessageType.EOS:
             self.stop()
             self.emit(self.ENDED, None)
+        elif t == Gst.MessageType.ASYNC_DONE:
+            self.update()
         elif t == Gst.MessageType.ERROR:
             self.stop()
             err, debug = message.parse_error()
