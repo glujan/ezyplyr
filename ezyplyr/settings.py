@@ -37,6 +37,14 @@ class Settings(object):
         with open(SETTINGS_FILE, 'wb') as configfile:
             self.config.write(configfile)
 
+    def rescan_collection(self):
+        songs = []
+        for root, dirnames, filenames in os.walk(self.collection):
+            for filename in fnmatch.filter(filenames, '*.mp3'):
+                path = os.path.join(root, filename).decode('utf8')
+                songs.append(Song(path))
+        return songs
+
     def _getrepeat(self):
         return self.config.getboolean('Playback', 'repeat')
 

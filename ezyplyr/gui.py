@@ -3,7 +3,6 @@
 
 from __future__ import division
 
-import fnmatch
 import itertools
 import logging
 import os
@@ -438,14 +437,6 @@ class EzySignalHandler(object):
     def on_rescan_activated(self, source=None):
         tree_library = utils.find_child(self.window, 'tree').get_model()
 
-        def do_update():
-            songs = []
-            for root, dirnames, filenames in os.walk(self.settings.collection):
-                for filename in fnmatch.filter(filenames, '*.mp3'):
-                    path = os.path.join(root, filename).decode('utf8')
-                    songs.append(models.Song(path))
-            return songs
-
         def callback(result=None):
             def add_iter(obj, path=None):
                 parent = tree_library.get_iter(path) if path else None
@@ -472,7 +463,7 @@ class EzySignalHandler(object):
             logger.exception(error)
             utils.notify(_('Error scanning collection'), 'dialog-error')
 
-        utils.async_call(do_update, callback, errback)
+        utils.async_call(self.settings.rescan_collection, callback, errback)
 
     def on_repeat_activated(self, source):
         self.settings.repeat = source.get_active()
