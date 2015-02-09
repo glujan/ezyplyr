@@ -1,28 +1,31 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+import fnmatch
 import os
-import subprocess
 
 from ConfigParser import SafeConfigParser
 
+from gi.repository import GLib
 
-SETTINGS_FILE = os.path.expanduser('~/.config/ezyplyr/ezyplyr.rc')
+from models import Song
 
 
 class Settings(object):
+    SETTINGS_FILE = os.path.join(GLib.get_user_config_dir(), 'ezyplyr', 'ezyplyr.rc')
+    COLLECTION_FILE = os.path.join(GLib.get_user_data_dir(), 'ezyplyr', 'collection.csv')
 
     def __init__(self):
         super(Settings, self).__init__()
         self.config = SafeConfigParser()
 
-        if os.path.isfile(SETTINGS_FILE):
-            self.config.read(SETTINGS_FILE)
+        if os.path.isfile(self.SETTINGS_FILE):
+            self.config.read(self.SETTINGS_FILE)
         else:
             try:
-                DEFAULT_DIR = subprocess.check_output(['xdg-user-dir', 'MUSIC'])
+                DEFAULT_DIR = GLib.get_user_special_dir(GLib.USER_DIRECTORY_MUSIC)
             except OSError:
-                DEFAULT_DIR = os.path.expanduser('~')
+                DEFAULT_DIR = os.path.expanduser('~/Music')
             self.config.add_section('Playback')
             self.config.set('Playback', 'repeat', 'True')
             self.config.set('Playback', 'shuffle', 'True')
@@ -30,11 +33,11 @@ class Settings(object):
             self.config.set('Collection', 'dir', DEFAULT_DIR.strip())
 
     def save(self):
-        settings_dir = os.path.dirname(SETTINGS_FILE)
+        settings_dir = os.path.dirname(self.SETTINGS_FILE)
         if not os.path.isdir(settings_dir):
             os.makedirs(settings_dir)
 
-        with open(SETTINGS_FILE, 'wb') as configfile:
+        with open(self.SETTINGS_FILE, 'wb') as configfile:
             self.config.write(configfile)
 
     def rescan_collection(self):
