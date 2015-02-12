@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division, unicode_literals
+from past.builtins import cmp
+from future import standard_library
+standard_library.install_aliases()
 
 import gettext
 import threading
@@ -45,13 +48,9 @@ def get_time(seconds):
 
 
 def sort_func(model, row1, row2, user_data):
-    value1 = model.get_value(row1, 0)
-    value2 = model.get_value(row2, 0)
-    if value1 and value2:
-        sort = cmp(value1, value2)
-    else:
-        sort = -1
-    return sort
+    song1 = model.get_value(row1, 0)
+    song2 = model.get_value(row2, 0)
+    return cmp(song1, song2)
 
 
 def async_call(func, callback=None, errback=None, *args, **kwargs):
@@ -66,7 +65,7 @@ def async_call(func, callback=None, errback=None, *args, **kwargs):
     def do_call():
         try:
             result = func(*args, **kwargs)
-        except Exception, err:
+        except Exception as err:
             GObject.idle_add(lambda: errback(err))
         else:
             GObject.idle_add(lambda: callback(result))

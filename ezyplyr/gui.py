@@ -2,6 +2,13 @@
 # -*- coding: utf8 -*-
 
 from __future__ import division
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import next
+from builtins import str
+from builtins import object
 
 import itertools
 import logging
@@ -12,10 +19,10 @@ from random import randrange
 from gi.repository import Gdk, Gtk, Gst, GObject
 from gi.repository.GdkPixbuf import Pixbuf
 
-import models
-import utils
-from settings import Settings
-from utils import ugettext as _
+from . import models
+from . import utils
+from .settings import Settings
+from .utils import ugettext as _
 
 
 logger = logging.getLogger()
@@ -72,7 +79,7 @@ class EzyPlaylist(Gtk.TreeView):
         songs = source._retrieve_songs(path)
 
         model = self.get_model()
-        map(lambda s: model.append((s,)), songs)
+        list(map(lambda s: model.append((s,)), songs))
         self.emit('playlist-updated', {'added': len(songs),
                                        'position': -1})
 
@@ -81,7 +88,7 @@ class EzyPlaylist(Gtk.TreeView):
         if info == SONG_INFO:
             model = widget.get_model()
             for uri in data.get_uris():
-                s = models.Song(path=urllib.url2pathname(uri))
+                s = models.Song(path=urllib.request.url2pathname(uri))
                 model.append((s,))
             self.emit('playlist-updated', {'added': len(data.get_uris()),
                                            'position': -1})
@@ -89,7 +96,7 @@ class EzyPlaylist(Gtk.TreeView):
     def _cell_data_func(self, column, cell, model, iter, data):
         item = model.get_value(iter, 0)
         value = getattr(item, column.get_name(), '')
-        cell.set_property('text', str(value or '').decode('utf8'))
+        cell.set_property('text', bytes(value or b'').decode('utf8'))
 
 
 class EzySongsTree(Gtk.TreeView):
@@ -121,7 +128,7 @@ class EzySongsTree(Gtk.TreeView):
             tree_store, tree_paths = selection.get_selected_rows()
             songs = (self._retrieve_songs(tp.copy()) for tp in tree_paths)
             songs = list(itertools.chain(*songs))
-            songs_uris = map(lambda s: urllib.pathname2url(s.path), songs)
+            songs_uris = [urllib.request.pathname2url(s.path) for s in songs]
             data.set_uris(songs_uris)
 
     def get_model_value(self, tree_path):
@@ -151,14 +158,14 @@ class EzySongsTree(Gtk.TreeView):
             to_extend = self._retrieve_songs(tree_path.copy())
             while to_extend:
                 items.extend(to_extend)
-                tree_path.next()
+                next(tree_path)
                 to_extend = self._retrieve_songs(tree_path.copy())
 
         return items
 
     def _cell_data_func(self, column, cell, model, iter, data):
         item = model.get_value(iter, 0)
-        cell.set_property('text', unicode(item))
+        cell.set_property('text', str(item))
 
 
 class EzyGstPlayer(GObject.GObject):
@@ -187,7 +194,7 @@ class EzyGstPlayer(GObject.GObject):
     def path(self, value):
         if self._path != value:
             self._path = value
-            uri = 'file://' + urllib.pathname2url(self._path)
+            uri = 'file://' + urllib.request.pathname2url(self._path)
             self.player.set_property("uri", uri)
 
     def _init_player(self):

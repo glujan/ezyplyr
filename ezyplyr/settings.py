@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+from __future__ import absolute_import
+from builtins import str
+from builtins import object
+
 import fnmatch
 import os
 
@@ -8,7 +12,7 @@ from ConfigParser import SafeConfigParser
 
 from gi.repository import GLib
 
-from models import Song
+from .models import Song
 
 
 class Settings(object):

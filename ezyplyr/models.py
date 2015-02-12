@@ -17,10 +17,12 @@ class MusicBase(GObject.GObject):
         self.set_properties(**kwargs)
 
     def __gt__(self, other):
-        return locale.strcoll(unicode(self), unicode(other)) > 0
+        'Hack because gi is complaining about using str from future'
+        return locale.strcoll('{}'.format(self), '{}'.format(other)) > 0
 
     def __lt__(self, other):
-        return locale.strcoll(unicode(self), unicode(other)) < 0
+        'Hack because gi is complaining about using str from future'
+        return locale.strcoll('{}'.format(self), '{}'.format(other)) < 0
 
 
 class Song(MusicBase):
@@ -48,7 +50,7 @@ class Song(MusicBase):
             album_artist = tags.get('ALBUMARTIST', ('',))[0]
         except TypeError:
             logger.debug('TODO message')
-        except (OSError, ValueError), err:
+        except (OSError, ValueError) as err:
             logger.exception(err)
         else:
             kwargs.update({'title': title, 'track_no': track_no, 'year': year,
