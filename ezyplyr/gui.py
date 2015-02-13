@@ -221,9 +221,11 @@ class EzyGstPlayer(GObject.GObject):
             self.play(path)
 
     def play(self, path=None):
-        if self.path != path:
+        if path:
             self.player.set_state(Gst.State.NULL)
             self.path = path
+        else:
+            self.seek(0)
 
         self.player.set_state(Gst.State.PLAYING)
         self.playing = True
