@@ -15,8 +15,8 @@ It's not ready yet. It can play music but only `mp3`. Seeker does not work. You 
 ## Future
 Listed by importance
 - [x] ~~Actual creation of a player~~
-- [ ] Storing scanned library and playlist :crying_cat_face:
-- [ ] MPRIS v2 support
+- [x] ~~Storing scanned library and playlist~~
+- [ ] MPRIS v2 support :crying_cat_face:
 - [ ] Reading lyrics stored in music file
 - [ ] Pluggable interfaces (like in [GMusicBrowser](http://gmusicbrowser.org/))
 

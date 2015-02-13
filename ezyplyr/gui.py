@@ -29,7 +29,7 @@ logger = logging.getLogger()
 
 RESOURCES = os.path.join(os.path.dirname(__file__), 'res')
 NAME = u'EzyPlyr'
-VERSION = '0.3'
+VERSION = '0.4'
 SONG_INFO = 0
 
 
