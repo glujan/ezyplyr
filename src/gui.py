@@ -21,6 +21,7 @@ from gi.repository.GdkPixbuf import Pixbuf
 
 from . import models
 from . import utils
+from .. import __version__, __author__
 from .settings import Settings
 from .utils import ugettext as _
 
@@ -29,7 +30,6 @@ logger = logging.getLogger()
 
 RESOURCES = os.path.join(os.path.dirname(__file__), 'res')
 NAME = u'EzyPlyr'
-VERSION = '0.4'
 SONG_INFO = 0
 
 
@@ -468,6 +468,7 @@ class EzySignalHandler(object):
 
     def on_rescan_activated(self, source=None):
         tree_library = utils.find_child(self.window, 'tree')
+
         def callback(result):
             tree_library.get_model().clear()
             tree_library.add_songs(result)
@@ -489,7 +490,7 @@ class EzySignalHandler(object):
 
     def on_about_activated(self, source):
         about = Gtk.AboutDialog(
-            self, program_name=NAME, version=VERSION, modal=True,
+            self, program_name=NAME, version=__version__, modal=True,
             website=u'http://example.org/', website_label=_('Website'),
             comments=_("Music player created using Python and GTK3"),
             transient_for=self.window, can_focus=False
@@ -497,7 +498,7 @@ class EzySignalHandler(object):
 
         icon_path = os.path.join(RESOURCES, 'icon32.ico')
         about.set_logo(Pixbuf.new_from_file_at_size(icon_path, 32, 32))
-        about.set_authors([u"Grzegorz Janik"])
+        about.set_authors([__author__])
 
         about.run()
         about.destroy()

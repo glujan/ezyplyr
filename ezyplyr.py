@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 from gi import require_version
 from gi.repository import Gst, Gtk, Notify
 
-from ezyplyr.gui import EzyWindow, NAME
+from src.gui import EzyWindow, NAME
 
 require_version('Gst', '1.0')
 
