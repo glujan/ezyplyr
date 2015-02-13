@@ -131,6 +131,19 @@ class EzySongsTree(Gtk.TreeView):
             songs_uris = [urllib.request.pathname2url(s.path) for s in songs]
             data.set_uris(songs_uris)
 
+    def add_songs(self, songs):
+        artists = utils.LazyDict()
+        albums = utils.LazyDict()
+
+        for song in songs:
+            artist = models.Artist(song)
+            album = models.Album(song)
+
+            path = artists.setdefault(artist, lambda: self._add_iter(artist))
+            path = albums.setdefault(album, lambda: self._add_iter(album, path))
+
+            self._add_iter(song, path)
+
     def get_model_value(self, tree_path):
         song = None
         try:
@@ -143,6 +156,13 @@ class EzySongsTree(Gtk.TreeView):
 
     def on_playlist_updated(self, source, data):
         self.get_selection().unselect_all()
+
+    def _add_iter(self, obj, path=None):
+        tree_library = self.get_model()
+
+        parent = tree_library.get_iter(path) if path else None
+        it = tree_library.append(parent, (obj,))
+        return tree_library.get_string_from_iter(it)
 
     def _retrieve_songs(self, tree_path):
         level = tree_path.get_depth()
@@ -447,26 +467,10 @@ class EzySignalHandler(object):
         plst.clear()
 
     def on_rescan_activated(self, source=None):
-        tree_library = utils.find_child(self.window, 'tree').get_model()
-
-        def callback(result=None):
-            def add_iter(obj, path=None):
-                parent = tree_library.get_iter(path) if path else None
-                it = tree_library.append(parent, (obj,))
-                return tree_library.get_string_from_iter(it)
-
-            tree_library.clear()
-            artists = utils.LazyDict()
-            albums = utils.LazyDict()
-
-            for song in result:
-                artist = models.Artist(song)
-                album = models.Album(song)
-
-                path = artists.setdefault(artist, lambda: add_iter(artist))
-                path = albums.setdefault(album, lambda: add_iter(album, path))
-
-                add_iter(song, path)
+        tree_library = utils.find_child(self.window, 'tree')
+        def callback(result):
+            tree_library.get_model().clear()
+            tree_library.add_songs(result)
 
             if source:
                 utils.notify(_('Collection scanned!'))
