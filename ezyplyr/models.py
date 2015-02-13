@@ -35,7 +35,10 @@ class Song(MusicBase):
     year = GObject.property(type=str)
     genre = GObject.property(type=str)
 
-    def __init__(self, path=None, *args, **kwargs):
+    @staticmethod
+    def from_path(path, *args, **kwargs):
+        song = None
+
         try:
             track = taglib.File(path)
             tags = track.tags
@@ -54,10 +57,23 @@ class Song(MusicBase):
             logger.exception(err)
         else:
             kwargs.update({'title': title, 'track_no': track_no, 'year': year,
-                           'artist': artist, 'album': album, 'genre': genre,
-                           'album_artist': album_artist, 'path': path})
+                            'artist': artist, 'album': album, 'genre': genre,
+                            'album_artist': album_artist, 'path': path})
+            song = Song(*args, **kwargs)
 
-        super(Song, self).__init__(*args, **kwargs)
+        return song
+
+    def to_dict(self):
+        return {
+            'path': self.path,
+            'track_no': self.track_no,
+            'title': self.title,
+            'artist': self.artist,
+            'album': self.album,
+            'album_artist': self.album_artist,
+            'year': self.year,
+            'genre': self.genre,
+        }
 
     def __unicode__(self):
         if self.track_no:

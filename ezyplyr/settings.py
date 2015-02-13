@@ -6,9 +6,10 @@ from builtins import str
 from builtins import object
 
 import fnmatch
+import json
 import os
 
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 
 from gi.repository import GLib
 
@@ -17,11 +18,19 @@ from .models import Song
 
 class Settings(object):
     SETTINGS_FILE = os.path.join(GLib.get_user_config_dir(), 'ezyplyr', 'ezyplyr.rc')
-    COLLECTION_FILE = os.path.join(GLib.get_user_data_dir(), 'ezyplyr', 'collection.csv')
+    COLLECTION_FILE = os.path.join(GLib.get_user_data_dir(), 'ezyplyr', 'collection.json')
 
     def __init__(self):
         super(Settings, self).__init__()
         self.config = SafeConfigParser()
+
+        settings_dir = os.path.dirname(self.SETTINGS_FILE)
+        if not os.path.isdir(settings_dir):
+            os.makedirs(settings_dir)
+
+        collection_dir = os.path.dirname(self.COLLECTION_FILE)
+        if not os.path.isdir(collection_dir):
+            os.makedirs(collection_dir)
 
         if os.path.isfile(self.SETTINGS_FILE):
             self.config.read(self.SETTINGS_FILE)
@@ -37,19 +46,16 @@ class Settings(object):
             self.config.set('Collection', 'dir', DEFAULT_DIR.strip())
 
     def save(self):
-        settings_dir = os.path.dirname(self.SETTINGS_FILE)
-        if not os.path.isdir(settings_dir):
-            os.makedirs(settings_dir)
-
         with open(self.SETTINGS_FILE, 'wb') as configfile:
             self.config.write(configfile)
 
     def rescan_collection(self):
         songs = []
-        for root, dirnames, filenames in os.walk(self.collection):
+        for root, dirnames, filenames in os.walk(self.collection_dir):
             for filename in fnmatch.filter(filenames, '*.mp3'):
                 path = os.path.join(root, filename).decode('utf8')
-                songs.append(Song(path))
+                songs.append(Song.from_path(path))
+        self.collection = songs
         return songs
 
     def _getrepeat(self):
@@ -74,4 +80,17 @@ class Settings(object):
     def _setdir(self, value):
         self.config.set('Collection', 'dir', value)
 
-    collection = property(_getdir, _setdir)
+    collection_dir = property(_getdir, _setdir)
+
+    def _get_collection(self):
+        with open(self.COLLECTION_FILE, 'rb') as collection:
+            songs = [Song(**json.loads(kwargs)) for kwargs in collection]
+        return songs
+
+
+    def _set_collection(self, value):
+        with open(self.COLLECTION_FILE, 'wb') as collection:
+            songs = [json.dumps(song.to_dict()) + '\n' for song in value]
+            collection.writelines(songs)
+
+    collection = property(_get_collection, _set_collection)

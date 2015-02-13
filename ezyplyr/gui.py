@@ -88,7 +88,7 @@ class EzyPlaylist(Gtk.TreeView):
         if info == SONG_INFO:
             model = widget.get_model()
             for uri in data.get_uris():
-                s = models.Song(path=urllib.request.url2pathname(uri))
+                s = models.Song.from_path(urllib.request.url2pathname(uri))
                 model.append((s,))
             self.emit('playlist-updated', {'added': len(data.get_uris()),
                                            'position': -1})
@@ -295,6 +295,9 @@ class EzySignalHandler(object):
         self.player = EzyGstPlayer()
         self.settings = Settings()
         self.curr = 0
+
+        tree_library = utils.find_child(self.window, 'tree')
+        tree_library.add_songs(self.settings.collection)
 
     def init_signals(self):
         self.window.connect("delete-event", self.on_delete)
