@@ -79,7 +79,7 @@ class EzyPlaylist(Gtk.TreeView):
         songs = source._retrieve_songs(path)
 
         model = self.get_model()
-        list(map(lambda s: model.append((s,)), songs))
+        map(lambda s: model.append((s,)), songs)
         self.emit('playlist-updated', {'added': len(songs),
                                        'position': -1})
 
