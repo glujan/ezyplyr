@@ -1,3 +1,5 @@
 *.pyc
 .ropeproject
 __pycache__
+/.pybuild
+/target
